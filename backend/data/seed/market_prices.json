@@ -1,0 +1,12 @@
+{
+  "_note": "MOCK/seeded market prices (BDT). Replace with a real feed when available. Prices are per maund (approx 37.32 kg) unless noted.",
+  "_source": "placeholder — seed values only",
+  "prices": {
+    "Boro Rice": { "unit": "maund", "current": 1200, "history": [1100, 1150, 1180, 1200] },
+    "Maize":     { "unit": "maund", "current": 950,  "history": [900, 920, 940, 950] },
+    "Potato":    { "unit": "maund", "current": 700,  "history": [820, 780, 740, 700] },
+    "Jute":      { "unit": "maund", "current": 2800, "history": [2600, 2700, 2750, 2800] },
+    "Wheat":     { "unit": "maund", "current": 1400, "history": [1350, 1370, 1390, 1400] },
+    "Mustard":   { "unit": "maund", "current": 3200, "history": [3000, 3100, 3150, 3200] }
+  }
+}
