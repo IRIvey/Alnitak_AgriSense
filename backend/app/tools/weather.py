@@ -16,18 +16,43 @@ import httpx
 from app.config import settings
 
 
+# Open-Meteo's gazetteer predates the 2018 district renames, so the modern
+# spellings a farmer will type have no Bangladesh entry at all — map them back.
+_BD_NAME_ALIASES = {
+    "bogura": "Bogra",
+    "chattogram": "Chittagong",
+    "cumilla": "Comilla",
+    "barishal": "Barisal",
+    "jashore": "Jessore",
+}
+
+
 async def _geocode(location: str) -> tuple[float, float, str]:
-    """Resolve a place name to (lat, lon, resolved_name)."""
+    """Resolve a place name to (lat, lon, resolved_name) inside Bangladesh.
+
+    The geocoder is global and its top hit for a Bangladeshi town can be in
+    another country (e.g. "Bogura" -> Bogurayev, Russia), so results are
+    filtered to country_code == "BD" and a not-found error is raised instead
+    of silently using weather for the wrong country.
+    """
+    query = location.strip().strip(".")
+    if query.lower().endswith("bangladesh"):
+        query = query[: -len("bangladesh")].rstrip(" ,")
+    query = _BD_NAME_ALIASES.get(query.lower(), query)
+
     async with httpx.AsyncClient(timeout=15) as client:
         r = await client.get(
             settings.open_meteo_geocode_url,
-            params={"name": location, "count": 1, "language": "en"},
+            params={"name": query, "count": 10, "language": "en"},
         )
         r.raise_for_status()
         data = r.json()
-    results = data.get("results") or []
+    results = [x for x in (data.get("results") or []) if x.get("country_code") == "BD"]
     if not results:
-        raise ValueError(f"Could not geocode location: {location!r}")
+        raise ValueError(
+            f"Could not find {location!r} in Bangladesh. Ask the farmer for their "
+            "district or upazila name (e.g. Rangpur, Bogra, Comilla)."
+        )
     top = results[0]
     name = ", ".join(
         p for p in [top.get("name"), top.get("admin1"), top.get("country")] if p
