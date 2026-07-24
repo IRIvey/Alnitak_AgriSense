@@ -1,20 +1,37 @@
 // Thin client for the AgriSense backend.
 const BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
 
+async function jsonOrThrow(res) {
+  if (!res.ok) {
+    let detail = `${res.status}`;
+    try {
+      const body = await res.json();
+      if (body.detail) detail = body.detail;
+    } catch {
+      /* keep status */
+    }
+    throw new Error(detail);
+  }
+  return res.json();
+}
+
 export async function sendChat(sessionId, message) {
   const res = await fetch(`${BASE}/api/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ session_id: sessionId, message }),
   });
-  if (!res.ok) throw new Error(`chat failed: ${res.status}`);
-  return res.json(); // -> ChatResponse
+  return jsonOrThrow(res); // -> ChatResponse
+}
+
+export async function getSession(sessionId) {
+  const res = await fetch(`${BASE}/api/session/${sessionId}`);
+  return jsonOrThrow(res); // -> ChatResponse (with history)
 }
 
 export async function getTrace(sessionId) {
   const res = await fetch(`${BASE}/api/trace/${sessionId}`);
-  if (!res.ok) throw new Error(`trace failed: ${res.status}`);
-  return res.json();
+  return jsonOrThrow(res);
 }
 
 // Live trace via Server-Sent Events. Returns the EventSource so callers can close it.
@@ -41,6 +58,5 @@ export async function checkout(sessionId, subscriberId, amountBdt, items) {
       items,
     }),
   });
-  if (!res.ok) throw new Error(`checkout failed: ${res.status}`);
-  return res.json();
+  return jsonOrThrow(res);
 }

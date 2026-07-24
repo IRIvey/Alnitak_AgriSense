@@ -59,9 +59,11 @@ class ChatResponse(BaseModel):
     farm: FarmProfile
     trace: list[TraceStep] = []
     # Structured artifacts the agent may emit this turn:
-    crop_options: Optional[list[dict[str, Any]]] = None
+    crop_options: Optional[dict[str, Any]] = None  # {options: [...], kb_references, note}
     season_plan: Optional[dict[str, Any]] = None
     financials: Optional[dict[str, Any]] = None
+    # Prior conversation, returned when rehydrating a session (memory).
+    history: Optional[list[dict[str, str]]] = None
 
 
 # ---------- Payment (bdapps CaaS) ----------
