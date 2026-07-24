@@ -4,16 +4,16 @@ Each tool exposes:
   - a JSON schema (name, description, input_schema) sent to the LLM, and
   - an async `handler(**kwargs)` the orchestrator invokes when the LLM calls it.
 
-Keeping the schema and handler together makes it trivial to add a tool: define
-it here and it is automatically available to the agent + rendered in the trace.
+`update_farm_profile` is special: its handler is None and the orchestrator
+intercepts it to mutate session state (conversational intake, Tier-0 #1).
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Awaitable, Callable
+from typing import Any, Awaitable, Callable, Optional
 
-from app.tools import crops, finance, season_plan, weather
 from app.rag import retriever
+from app.tools import crops, finance, season_plan, weather
 
 
 @dataclass
@@ -21,7 +21,7 @@ class Tool:
     name: str
     description: str
     input_schema: dict[str, Any]
-    handler: Callable[..., Awaitable[Any]]
+    handler: Optional[Callable[..., Awaitable[Any]]]
 
     def to_schema(self) -> dict[str, Any]:
         return {
@@ -31,16 +31,35 @@ class Tool:
         }
 
 
-# --- Tool definitions -------------------------------------------------------
-# NOTE: handlers are the real implementations in app/tools/* (currently stubs).
-
 TOOLS: dict[str, Tool] = {
+    "update_farm_profile": Tool(
+        name="update_farm_profile",
+        description=(
+            "Record farm profile fields the farmer just told you (location, farm "
+            "size, soil type, water availability, budget, target season). Call "
+            "this FIRST whenever the farmer reveals any of these. The result "
+            "tells you which required fields are still missing so you can ask "
+            "targeted follow-ups for ONLY those."
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {
+                "location": {"type": "string", "description": "village/upazila/district"},
+                "farm_size_acres": {"type": "number", "description": "farm size in acres (convert bigha: 1 bigha ≈ 0.33 acre)"},
+                "soil_type": {"type": "string", "description": "sandy | loam | clay | silt (or farmer's words)"},
+                "water_availability": {"type": "string", "description": "rainfed | limited | canal | tubewell/reliable"},
+                "budget_bdt": {"type": "number", "description": "working budget in BDT"},
+                "target_season": {"type": "string", "description": "e.g. Aman/Kharif-2, Boro, Rabi"},
+            },
+        },
+        handler=None,  # intercepted by the orchestrator (mutates session state)
+    ),
     "get_weather": Tool(
         name="get_weather",
         description=(
-            "Fetch REAL current + forecast weather (rainfall, temperature) for "
-            "a location using the Open-Meteo API. Use before crop/fertilizer "
-            "advice."
+            "Fetch REAL current + forecast weather (rainfall, temperature) for a "
+            "location via the Open-Meteo API. ALWAYS call this before crop or "
+            "fertilizer-timing advice. Never invent weather."
         ),
         input_schema={
             "type": "object",
@@ -48,7 +67,7 @@ TOOLS: dict[str, Tool] = {
                 "location": {"type": "string"},
                 "latitude": {"type": "number"},
                 "longitude": {"type": "number"},
-                "days": {"type": "integer", "default": 7},
+                "days": {"type": "integer", "default": 7, "minimum": 1, "maximum": 16},
             },
             "required": ["location"],
         },
@@ -57,9 +76,10 @@ TOOLS: dict[str, Tool] = {
     "recommend_crops": Tool(
         name="recommend_crops",
         description=(
-            "Rank at least 3 candidate crops for the farm profile, season, and "
-            "weather. Each option returns suitability, water need, risk, and a "
-            "rough profit estimate. Grounded in the knowledge base."
+            "Rank candidate crops for the farm profile, season, and live weather. "
+            "Returns >=3 options with suitability, water need, risk, rough profit "
+            "and a `because` explanation, plus KB citations. Pass the "
+            "weather_summary from get_weather so the ranking is weather-aware."
         ),
         input_schema={
             "type": "object",
@@ -67,8 +87,9 @@ TOOLS: dict[str, Tool] = {
                 "soil_type": {"type": "string"},
                 "season": {"type": "string"},
                 "water_availability": {"type": "string"},
-                "weather_summary": {"type": "object"},
+                "weather_summary": {"type": "object", "description": "the `summary` object returned by get_weather"},
                 "budget_bdt": {"type": "number"},
+                "farm_size_acres": {"type": "number"},
             },
             "required": ["soil_type", "season"],
         },
@@ -78,14 +99,14 @@ TOOLS: dict[str, Tool] = {
         name="build_season_plan",
         description=(
             "Produce a dated calendar for the chosen crop from land preparation "
-            "to harvest: sowing window, fertilizer timing, irrigation, weed/pest "
-            "checkpoints, harvest."
+            "to harvest (sowing window, fertilizer timing, irrigation, weed and "
+            "pest checkpoints, harvest), grounded in the KB crop calendar."
         ),
         input_schema={
             "type": "object",
             "properties": {
                 "crop": {"type": "string"},
-                "sowing_date": {"type": "string", "description": "ISO date"},
+                "sowing_date": {"type": "string", "description": "ISO date; omit to use the recommended window"},
                 "soil_type": {"type": "string"},
             },
             "required": ["crop"],
@@ -95,16 +116,30 @@ TOOLS: dict[str, Tool] = {
     "compute_financials": Tool(
         name="compute_financials",
         description=(
-            "Itemized cost breakdown + expected yield, revenue, net profit, ROI, "
-            "and break-even. Inspectable and internally consistent."
+            "Itemized cost breakdown + expected yield, revenue, net profit, ROI "
+            "and break-even for a crop and farm size. Deterministic math over "
+            "reference data — use these numbers verbatim, never recompute."
         ),
         input_schema={
             "type": "object",
             "properties": {
                 "crop": {"type": "string"},
                 "farm_size_acres": {"type": "number"},
-                "inputs": {"type": "object"},
-                "expected_price_bdt_per_unit": {"type": "number"},
+                "inputs": {
+                    "type": "object",
+                    "description": (
+                        "cost-line overrides {item: {qty, unit_cost}} — ONLY if the "
+                        "farmer explicitly stated their own costs; otherwise OMIT"
+                    ),
+                },
+                "expected_price_bdt_per_unit": {
+                    "type": "number",
+                    "description": "ONLY if the farmer explicitly stated a selling price; NEVER invent one — omit to use reference data",
+                },
+                "expected_yield_per_acre": {
+                    "type": "number",
+                    "description": "ONLY if the farmer explicitly stated their own yield; NEVER invent one — omit to use reference data",
+                },
             },
             "required": ["crop", "farm_size_acres"],
         },
@@ -113,14 +148,16 @@ TOOLS: dict[str, Tool] = {
     "search_knowledge_base": Tool(
         name="search_knowledge_base",
         description=(
-            "Retrieve grounded agronomic facts (crop calendars, fertilizer "
-            "guides, soil/yield references) from the RAG knowledge base."
+            "Retrieve grounded agronomic facts (crop calendars, fertilizer doses, "
+            "soil suitability, pest management) from the local knowledge base "
+            "built from public BRRI/BARC/DAE extension materials. Use this for "
+            "any agronomy question instead of answering from memory."
         ),
         input_schema={
             "type": "object",
             "properties": {
                 "query": {"type": "string"},
-                "k": {"type": "integer", "default": 4},
+                "k": {"type": "integer", "default": 4, "minimum": 1, "maximum": 8},
             },
             "required": ["query"],
         },
@@ -135,7 +172,12 @@ def tool_schemas() -> list[dict[str, Any]]:
 
 
 async def dispatch(name: str, params: dict[str, Any]) -> Any:
-    """Invoke a tool by name with validated params."""
+    """Invoke a tool by name. Unknown params are dropped defensively."""
     if name not in TOOLS:
         raise KeyError(f"Unknown tool: {name}")
-    return await TOOLS[name].handler(**params)
+    tool = TOOLS[name]
+    if tool.handler is None:
+        raise RuntimeError(f"Tool {name} must be handled by the orchestrator")
+    allowed = set(tool.input_schema.get("properties", {}).keys())
+    clean = {k: v for k, v in params.items() if k in allowed}
+    return await tool.handler(**clean)

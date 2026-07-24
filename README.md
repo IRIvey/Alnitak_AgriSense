@@ -62,21 +62,21 @@ written to a **trace** that the frontend renders live.
 
 | Tier | Feature | Where | Status |
 |------|---------|-------|--------|
-| **0** | Conversational intake (location, size, soil, water, budget, season) | `agent/orchestrator.py`, `agent/prompts.py` | scaffold |
-| **0** | Live weather grounding | `tools/weather.py` (Open-Meteo) | scaffold |
-| **0** | Crop recommendation (≥3 ranked) | `tools/crops.py` | scaffold |
-| **0** | Season plan (dated calendar) | `tools/season_plan.py` | scaffold |
-| **0** | Financial projection (cost, yield, revenue, ROI, break-even) | `tools/finance.py` | scaffold |
-| **0** | Explained reasoning | prompts + tool outputs carry `because` fields | scaffold |
-| **0** | Knowledge base + RAG | `rag/`, `data/knowledge_base/` | scaffold |
-| **0** | Visible agent trace | `agent/trace.py`, frontend `TracePanel` | scaffold |
-| **1** | Persistent memory (cross-session) | `memory/` | scaffold |
-| **1** | Proactive weather-triggered advice | `tools/weather.py` + `agent` | scaffold |
-| **1** | Fertilizer / irrigation scheduler | `tools/fertilizer.py` | scaffold |
-| **1** | Pest & disease risk | `tools/pests.py` | scaffold |
-| **1** | Scenario simulation (what-if) | `tools/scenario.py` | scaffold |
-| **2** | bdapps CaaS payment (sandbox) | `bdapps/caas.py`, `api/routes_payment.py` | scaffold |
-| **2** | Market price intelligence | `tools/market.py` | scaffold |
+| **0** | Conversational intake (location, size, soil, water, budget, season) | `agent/orchestrator.py`, `agent/prompts.py` | done |
+| **0** | Live weather grounding | `tools/weather.py` (Open-Meteo) | done |
+| **0** | Crop recommendation (≥3 ranked) | `tools/crops.py` | done |
+| **0** | Season plan (dated calendar) | `tools/season_plan.py` | done |
+| **0** | Financial projection (cost, yield, revenue, ROI, break-even) | `tools/finance.py` | done |
+| **0** | Explained reasoning | prompts + tool outputs carry `because` fields | done |
+| **0** | Knowledge base + RAG | `rag/`, `data/knowledge_base/` | done |
+| **0** | Visible agent trace | `agent/trace.py`, frontend `TracePanel` | done |
+| **1** | Persistent memory (cross-session) | `memory/` | done (SQLite; survives restarts) |
+| **1** | Proactive weather-triggered advice | `tools/weather.py` + `agent` | stub |
+| **1** | Fertilizer / irrigation scheduler | `tools/fertilizer.py` | stub |
+| **1** | Pest & disease risk | `tools/pests.py` | stub |
+| **1** | Scenario simulation (what-if) | `tools/scenario.py` | stub |
+| **2** | bdapps CaaS payment (sandbox) | `bdapps/caas.py`, `api/routes_payment.py` | working (sandbox sim) |
+| **2** | Market price intelligence | `tools/market.py` | stub |
 | **2** | Bengali / voice | frontend + prompts | future |
 
 > Scope discipline: **Tier 0 must run end to end before any Tier 1/2 work.**

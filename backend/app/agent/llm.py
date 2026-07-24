@@ -66,11 +66,15 @@ class LLMClient:
             }
         """
         oa_messages = [{"role": "system", "content": system}, *messages]
+        kwargs: dict[str, Any] = {}
+        oa_tools = self._to_openai_tools(tools)
+        if oa_tools:
+            kwargs["tools"] = oa_tools
         resp = await self._get_client().chat.completions.create(
             model=self.model,
             messages=oa_messages,
-            tools=self._to_openai_tools(tools),
             max_tokens=settings.llm_max_tokens,
+            **kwargs,
         )
         choice = resp.choices[0]
         msg = choice.message
@@ -83,8 +87,48 @@ class LLMClient:
                 args = {}
             tool_calls.append({"id": tc.id, "name": tc.function.name, "input": args})
 
+        # Raw assistant message in OpenAI format — must be appended to the
+        # conversation before the matching role="tool" results.
+        assistant_message: dict[str, Any] = {
+            "role": "assistant",
+            "content": msg.content or "",
+        }
+        if msg.tool_calls:
+            assistant_message["tool_calls"] = [
+                {
+                    "id": tc.id,
+                    "type": "function",
+                    "function": {
+                        "name": tc.function.name,
+                        "arguments": tc.function.arguments or "{}",
+                    },
+                }
+                for tc in msg.tool_calls
+            ]
+
         return {
             "text": msg.content,
             "tool_calls": tool_calls,
+            "assistant_message": assistant_message,
             "stop_reason": choice.finish_reason,
         }
+
+    async def extract_json(self, system: str, user: str) -> dict[str, Any]:
+        """Structured JSON extraction (used for deterministic intake capture).
+
+        Uses OpenAI JSON mode so the result is always valid JSON. Returns {} on
+        any failure so the caller can proceed without the extraction.
+        """
+        try:
+            resp = await self._get_client().chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": user},
+                ],
+                response_format={"type": "json_object"},
+                max_tokens=300,
+            )
+            return json.loads(resp.choices[0].message.content or "{}")
+        except Exception:
+            return {}
