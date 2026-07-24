@@ -79,7 +79,30 @@ body { margin: 0; background: var(--bg); color: var(--ink); }
 .crop-suit { color: var(--accent-2); font-size: 0.85rem; }
 .crop-off { color: var(--warn); font-size: 0.8rem; border: 1px solid var(--warn); border-radius: 6px; padding: 0 0.35rem; }
 .crop-meta { display: flex; gap: 1rem; flex-wrap: wrap; color: var(--muted); font-size: 0.82rem; margin-top: 0.3rem; }
+.crop-score { color: var(--accent); font-size: 0.8rem; font-weight: 600; }
+.crop-profit { margin-top: 0.4rem; display: flex; gap: 0.5rem; align-items: baseline; flex-wrap: wrap; }
+.profit-main { font-weight: 700; color: var(--accent-2); font-size: 0.9rem; }
+.profit-tag { font-weight: 400; font-size: 0.72rem; color: var(--muted); }
+.profit-sub { color: var(--muted); font-size: 0.78rem; }
+.crop-afford { font-size: 0.8rem; color: var(--warn); margin: 0.35rem 0 0; }
 .crop-because { font-size: 0.82rem; color: var(--muted); font-style: italic; margin: 0.4rem 0 0.3rem; }
+.rank-summary { font-size: 0.85rem; color: var(--muted); margin: -0.3rem 0 0.7rem; line-height: 1.4; }
+.priority-picker { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 0.9rem; }
+.priority-label { font-size: 0.82rem; color: var(--muted); }
+.priority-picker button { padding: 0.35rem 0.7rem; border: 1px solid var(--border); border-radius: 20px; background: var(--panel); color: var(--ink); cursor: pointer; font-size: 0.82rem; font-weight: 600; }
+.priority-picker button:hover:not(:disabled) { border-color: var(--accent); }
+.priority-picker button.active { background: var(--accent); color: #08130a; border-color: var(--accent); }
+.priority-picker button:disabled { opacity: 0.5; cursor: default; }
+.method { margin-top: 0.7rem; }
+.method summary { cursor: pointer; color: var(--muted); font-size: 0.8rem; }
+.method summary:hover { color: var(--ink); }
+.method p { font-size: 0.78rem; color: var(--muted); margin: 0.4rem 0 0; line-height: 1.4; }
+.excluded { margin-top: 0.8rem; border-top: 1px solid var(--border); padding-top: 0.6rem; }
+.excluded summary { cursor: pointer; color: var(--muted); font-size: 0.85rem; font-weight: 600; }
+.excluded summary:hover { color: var(--ink); }
+.excluded ul { margin: 0.5rem 0 0; padding-left: 1.1rem; }
+.excluded li { font-size: 0.8rem; color: var(--muted); margin-bottom: 0.25rem; }
+.excluded strong { color: var(--ink); }
 .crop-pick { padding: 0.35rem 0.7rem; border: 0; border-radius: 6px; background: var(--accent); color: #08130a; font-weight: 600; cursor: pointer; font-size: 0.82rem; }
 .crop-pick:disabled { opacity: 0.45; cursor: default; }
 .kb-refs { color: var(--muted); font-size: 0.78rem; margin-top: 0.6rem; }

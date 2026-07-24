@@ -158,6 +158,14 @@ export default function App() {
                   `Let's go with ${crop}. Build the season plan and financials.`
                 )
               }
+              onPriority={(p) => {
+                const label = {
+                  balanced: "a balanced view of fit and profit",
+                  profit: "the most profitable crops",
+                  safe: "the safest, lowest-risk crops",
+                }[p];
+                handleSend(`Re-rank the crop options to prioritise ${label}.`);
+              }}
             />
           )}
           {effectiveTab === "calendar" && <PlanView plan={plan} />}

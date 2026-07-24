@@ -77,9 +77,11 @@ TOOLS: dict[str, Tool] = {
         name="recommend_crops",
         description=(
             "Rank candidate crops for the farm profile, season, and live weather. "
-            "Returns >=3 options with suitability, water need, risk, rough profit "
-            "and a `because` explanation, plus KB citations. Pass the "
-            "weather_summary from get_weather so the ranking is weather-aware."
+            "First hard-excludes infeasible crops (wrong season / water impossible "
+            "/ over budget) with reasons, then ranks the rest by suitability + "
+            "risk-adjusted profit. Returns feasible `options`, an `excluded` list "
+            "with reasons, and KB citations. Pass the weather_summary from "
+            "get_weather. Set `priority` from the farmer's stated preference."
         ),
         input_schema={
             "type": "object",
@@ -90,6 +92,11 @@ TOOLS: dict[str, Tool] = {
                 "weather_summary": {"type": "object", "description": "the `summary` object returned by get_weather"},
                 "budget_bdt": {"type": "number"},
                 "farm_size_acres": {"type": "number"},
+                "priority": {
+                    "type": "string",
+                    "enum": ["balanced", "profit", "safe"],
+                    "description": "ranking bias: 'profit' if the farmer wants max return, 'safe' if they want low risk, else 'balanced' (default)",
+                },
             },
             "required": ["soil_type", "season"],
         },
